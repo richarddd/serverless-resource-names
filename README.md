@@ -1,16 +1,26 @@
-Serverless Resource Names Plugin
-=============================
+# Serverless Resource Names Plugin
+
 This plugin generate resources names from your resource references in `Resources:`
 
 ## Setup
 
 Install via npm or yarn in the root of your Serverless project:
+
 ```
 npm install serverless-resource-names --save-dev
 ```
+
 or
+
 ```
 yarn add serverless-resource-names --dev
+```
+
+### Apply plugin
+
+```yml
+plugins:
+  - serverless-resource-names
 ```
 
 ## Why?
@@ -44,11 +54,10 @@ Futhermore you're likley to use them in your enviroment variables as well
 
 ```yml
 provider:
-    environment:
-        SOME_QUEUE_ONE: ${self:service.name}-some-queue-one-${self:provider.stage}
-        SOME_QUEUE_TWO: ${self:service.name}-some-queue-two-${self:provider.stage}
-        UPLOAD_BUCKET: ${self:service.name}-upload-bucket-${self:provider.stage}
-
+  environment:
+    SOME_QUEUE_ONE: ${self:service.name}-some-queue-one-${self:provider.stage}
+    SOME_QUEUE_TWO: ${self:service.name}-some-queue-two-${self:provider.stage}
+    UPLOAD_BUCKET: ${self:service.name}-upload-bucket-${self:provider.stage}
 ```
 
 This becomes very troublesome to manage when your resources grow and you'll constantly need to add these things
@@ -63,19 +72,17 @@ So the following resource...
 
 ```yml
 UploadBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-        ...
+  Type: AWS::S3::Bucket
+  Properties: ...
 ```
 
 ...will generate the following based on the reference `UploadBucket`:
 
 ```yml
 UploadBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-        BucketName: service-name-upload-bucket-dev
-
+  Type: AWS::S3::Bucket
+  Properties:
+    BucketName: service-name-upload-bucket-dev
 ```
 
 ```yml
@@ -93,14 +100,10 @@ You can change the prefix for your resources using
 
 ```yml
 custom:
-    resourceNames:
-        prefix: "awesome-prefix"
-       
+  resourceNames:
+    prefix: "awesome-prefix"
 ```
 
 Default will prefix using your service name in `serverless.yml`
 
-
-
 
-
