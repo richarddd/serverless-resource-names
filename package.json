@@ -1,0 +1,8 @@
+{
+  "name": "serverless-resource-names",
+  "version": "1.0.0",
+  "description": "Automagically name your Cloudformation resources according to their ref identifier",
+  "main": "src/index.js",
+  "author": "Richard Davison",
+  "license": "MIT"
+}
