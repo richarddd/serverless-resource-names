@@ -67,6 +67,21 @@ class ResourceNamePlugin {
     } else {
       properties[nameConverter] = resoureceName;
     }
+    if (type === "AWS::SNS::Topic") {
+      acc[`${envName}_ARN`] = {
+        ["Fn::Join"]: [
+          ":",
+          [
+            "arn",
+            "aws",
+            "sns",
+            { Ref: "AWS::Region" },
+            { Ref: "AWS::AccountId" },
+            resoureceName
+          ]
+        ]
+      };
+    }
     acc[envName] = resoureceName;
   }
 
