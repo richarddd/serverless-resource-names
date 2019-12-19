@@ -3,6 +3,7 @@
   "version": "1.0.1",
   "description": "Automagically name your Cloudformation resources according to their ref identifier",
   "main": "src/index.js",
+  "homepage": "https://github.com/richarddd/erverless-resource-names#readme",
   "author": "Richard Davison",
   "license": "MIT"
 }
