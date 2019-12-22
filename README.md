@@ -29,23 +29,23 @@ Suppose you have one or many resources in your `serverless.yml` like so:
 
 ```yml
 Resources:
-    SomeQueueOne:
-      Type: AWS::SQS::Queue
-      Properties:
-        QueueName: ${self:service.name}-some-queue-one-${self:provider.stage}
-        ...
+  SomeQueueOne:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: ${self:service.name}-some-queue-one-${self:provider.stage}
+      ...
 
-    SomeQueueTwo:
-      Type: AWS::SQS::Queue
-      Properties:
-        QueueName: ${self:service.name}-some-queue-two-${self:provider.stage}
-        ...
+  SomeQueueTwo:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: ${self:service.name}-some-queue-two-${self:provider.stage}
+      ...
 
-    UploadBucket:
-      Type: AWS::S3::Bucket
-      Properties:
-        BucketName: ${self:service.name}-upload-bucket-${self:provider.stage}
-        ...
+  UploadBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: ${self:service.name}-upload-bucket-${self:provider.stage}
+      ...
 ```
 
 **Notice how you have to constantly specify names for these services?**
@@ -87,11 +87,11 @@ UploadBucket:
 
 ```yml
 functions:
-    func1:
-        environment:
-            UPLOAD_BUCKET: service-name-upload-bucket-dev
-            ...
-        ...
+  hello:
+    environment:
+      UPLOAD_BUCKET: service-name-upload-bucket-dev
+      ...
+    ...
 ```
 
 ## Settings
@@ -105,5 +105,24 @@ custom:
 ```
 
 Default will prefix using your service name in `serverless.yml`
+
+## SNS Topics
+
+This plugin will simplify referencing SNS topics. To reference a topic trigger for your lambda simply use: `${topic:TopicResourceName}` i.e:
+
+```yml
+functions:
+  hello:
+    handler: handler.hello
+    events:
+      - sns: ${topic:MyTopic}
+
+resources:
+  Resources:
+    MyTopic:
+      Type: AWS::SNS::Topic
+```
+
+The plugin will also inject topic ARN as an environment variable using the same naming convetions suffixed by `_ARN`. For the example above that would be: `MY_TOPIC_ARN`
 
 

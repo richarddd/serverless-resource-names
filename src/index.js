@@ -1,5 +1,7 @@
 "use strict";
 
+const TOPIC_PREFIX = "topic";
+
 const TYPE_TO_PROPERTY_NAME = {
   "AWS::SQS::Queue": "QueueName",
   "AWS::S3::Bucket": "BucketName",
@@ -35,23 +37,37 @@ class ResourceNamePlugin {
     this.serverless = serverless;
     this.options = options;
 
-    this.provider = this.serverless.getProvider("aws");
+    const delegate = serverless.variables.getValueFromSource.bind(
+      serverless.variables
+    );
 
-    this.hooks = {
-      "before:offline:start:init": this.writeNames.bind(this),
-      "before:aws:common:validate:validate": this.writeNames.bind(this)
+    serverless.variables.getValueFromSource = variableString => {
+      if (variableString.startsWith(`${TOPIC_PREFIX}:`)) {
+        const variable = variableString.split(`${TOPIC_PREFIX}:`)[1];
+        return this.topics[variable];
+      }
+
+      return delegate(variableString);
     };
+
+    this.provider = this.serverless.getProvider("aws");
+    this.resources = this.serverless.service.resources;
+    this.topics = {};
+    this.writeNames();
   }
 
-  setResourceName(acc, name, type, properties) {
-    const { prefix } = this.serverless.service.custom.resourceNames || {
-      prefix: this.serverless.service.name
+  logExpose(env) {
+    this.serverless.cli.log(`    ✔ Exposing env ${env}`);
+  }
+
+  setResourceName(acc, name, type, resource) {
+    const { prefix } = (this.serverless.service.custom &&
+      this.serverless.service.custom.resourceNames) || {
+      prefix: this.serverless.service.service
     };
     const stage = this.serverless.service.provider.stage;
 
     const envName = convertCase(name).toUpperCase();
-
-    this.serverless.cli.log(`    ✔ Exposing env ${envName}`);
 
     const resoureceName = `${prefix}-${envName.replace(
       /_/g,
@@ -63,13 +79,18 @@ class ResourceNamePlugin {
       throw Error(`Missing nameconverter for ${type}`);
     }
     if (nameConverter instanceof Function) {
-      nameConverter(resoureceName, properties);
+      nameConverter(resoureceName, resource.Properties || {});
     } else {
-      properties[nameConverter] = resoureceName;
+      if (!resource.Properties) {
+        resource.Properties = {};
+      }
+      resource.Properties[nameConverter] = resoureceName;
     }
+    this.logExpose(envName);
     if (type === "AWS::SNS::Topic") {
-      acc[`${envName}_ARN`] = {
-        ["Fn::Join"]: [
+      const arnEnvName = `${envName}_ARN`;
+      const arnValue = {
+        "Fn::Join": [
           ":",
           [
             "arn",
@@ -81,18 +102,26 @@ class ResourceNamePlugin {
           ]
         ]
       };
+      acc[arnEnvName] = arnValue;
+      this.topics[name] = {
+        topicName: resoureceName,
+        arn: arnValue
+      };
+      this.logExpose(arnEnvName);
     }
+
     acc[envName] = resoureceName;
   }
 
   writeNames() {
     this.serverless.cli.log(`Applying resource names...`);
     const resouceNamesEnvironment = Object.entries(
-      this.serverless.service.resources.Resources
+      this.resources.Resources
     ).reduce((acc, [key, resource]) => {
-      this.setResourceName(acc, key, resource.Type, resource.Properties);
+      this.setResourceName(acc, key, resource.Type, resource);
       return acc;
     }, {});
+
     Object.entries(this.serverless.service.functions).forEach(
       ([name, func]) => {
         func.environment = { ...func.environment, ...resouceNamesEnvironment };
