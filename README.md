@@ -125,4 +125,19 @@ resources:
 
 The plugin will also inject topic ARN as an environment variable using the same naming convetions suffixed by `_ARN`. For the example above that would be: `MY_TOPIC_ARN`
 
+## Commands
+
+Run `serverless env` to print all environment variables
+
+Note: all [Intristic Functions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference.html) are printed as escaped json
+
+Example:
+
+```bash
+ENVIRONMENT_VALUE_1=1
+ENVIRONMENT_VALUE_2=2
+SOME_TOPIC_ARN="{\"Fn::Join\":[\":\",[\"arn\",\"aws\",\"sns\",{\"Ref\":\"AWS::Region\"},{\"Ref\":\"AWS::AccountId\"},\"my-prefix-some-topic-dev\"]]}"
+SOME_TOPIC="my-prefix-some-topic-dev"
+```
+
 
