@@ -6,6 +6,7 @@ const TYPE_TO_PROPERTY_NAME = {
   "AWS::SQS::Queue": "QueueName",
   "AWS::S3::Bucket": "BucketName",
   "AWS::SNS::Topic": "TopicName",
+  "AWS::Lambda::Function": "FunctionName",
   "AWS::DocDB::DBCluster": "DBClusterIdentifier",
   "AWS::DynamoDB::Table": "TableName",
   "AWS::DocDB::DBInstance": "DBInstanceIdentifier",
@@ -17,19 +18,6 @@ const TYPE_TO_PROPERTY_NAME = {
       }
     }
     properties.Tags = [{ Key: "Name", Value: name }, ...existingTags];
-  }
-};
-
-const _generatedUids = {};
-const uuid = () => {
-  while (true) {
-    var uid = (
-      "00000" + ((Math.random() * Math.pow(36, 4)) | 0).toString(36)
-    ).slice(-4);
-    if (!_generatedUids.hasOwnProperty(uid)) {
-      _generatedUids[uid] = true;
-      return uid;
-    }
   }
 };
 
@@ -52,27 +40,18 @@ class ResourceNamePlugin {
     this.service = serverless.service;
     this.resources = this.service.resources;
     this.options = options;
-
-    const delegate = this.variables.getValueFromSource.bind(this.variables);
-
-    this.variables.getValueFromSource = variableString => {
-      if (variableString.startsWith(`${TOPIC_PREFIX}:`)) {
-        const variable = variableString.split(`${TOPIC_PREFIX}:`)[1];
-        const [topic, value] = variable.split(".");
-        return (!value && this.topics[topic]) || this.topics[topic][value];
-      }
-
-      return delegate(variableString);
-    };
-
     this.provider = serverless.getProvider("aws");
-
     this.topics = {};
     this.environmentVariables = {};
-    this.typeNames = {};
-    this.writeNames();
-
     this.injected = false;
+
+    this.variableResolvers = {
+      topic: {
+        resolver: this.getTopicValue.bind(this),
+        serviceName: "Serverless resource names",
+        isDisabledAtPrepopulation: true
+      }
+    };
 
     this.commands = {
       env: {
@@ -88,23 +67,50 @@ class ResourceNamePlugin {
     };
   }
 
-  printEnvironment() {
+  async getTopicValue(src) {
+    const variable = src.split(`${TOPIC_PREFIX}:`)[1];
+    const [topic, property] = variable.split(".");
+
+    await this.injectVariables();
+
+    const value =
+      (!property && this.topics[topic]) ||
+      (this.topics[topic] && this.topics[topic][property]);
+    if (!this.topics[topic]) {
+      throw new this.serverless.classes.Error(
+        `Can not find topic with resouce name: ${topic}`
+      );
+    }
+
+    if (!value) {
+      throw new this.serverless.classes.Error(
+        `Can not find property "${property}" in topic: ${topic}`
+      );
+    }
+
+    return value;
+  }
+
+  async printEnvironment() {
+    await this.writeNames();
+
     Object.entries(this.service.provider.environment).forEach(
       ([key, value]) => {
+        //let sourceValue = this.variables.getValueFromSource(value)
         let printValue = `"${value}"`;
         if (typeof value === "number" || typeof value === "boolean") {
           printValue = value;
         } else if (typeof value === "object") {
-          printValue = JSON.stringify(JSON.stringify(value)); //`"object-ref-${uuid()}"`;
+          printValue = JSON.stringify(JSON.stringify(value));
         }
         this.serverless.cli.consoleLog(`${key}=${printValue}`);
       }
     );
   }
 
-  injectVariables() {
+  async injectVariables() {
+    await this.writeNames();
     if (!this.injected) {
-      this.injected = true;
       this.serverless.cli.log(`Applying resource names...`);
       Object.entries(this.environmentVariables).forEach(([key]) => {
         this.serverless.cli.log(`    ✔ Exposing env ${key}`);
@@ -112,12 +118,11 @@ class ResourceNamePlugin {
     }
   }
 
-  setResourceName(acc, name, type, resource) {
+  setResourceName(acc, name, type, resource, stage) {
     const { prefix } = (this.service.custom &&
       this.service.custom.resourceNames) || {
       prefix: this.service.service
     };
-    const stage = this.service.provider.stage;
 
     const envName = convertCase(name).toUpperCase();
 
@@ -159,22 +164,35 @@ class ResourceNamePlugin {
         arn: arnValue
       };
     }
-
     acc[envName] = resoureceName;
   }
 
-  writeNames() {
-    this.environmentVariables = Object.entries(this.resources.Resources).reduce(
-      (acc, [key, resource]) => {
-        this.setResourceName(acc, key, resource.Type, resource);
-        return acc;
-      },
-      {}
-    );
-    this.service.provider.environment = {
-      ...this.service.provider.environment,
-      ...this.environmentVariables
-    };
+  async writeNames() {
+    if (!this.injected && this.resources) {
+      this.injected = true;
+      const resources = await this.serverless.variables.populateValue(
+        this.resources,
+        true
+      );
+      this.environmentVariables = Object.entries(resources.Resources).reduce(
+        (acc, [key, resource]) => {
+          this.setResourceName(
+            acc,
+            key,
+            resource.Type,
+            resource,
+            this.service.provider.stage
+          );
+          return acc;
+        },
+        {}
+      );
+
+      this.service.provider.environment = {
+        ...this.service.provider.environment,
+        ...this.environmentVariables
+      };
+    }
   }
 }
 module.exports = ResourceNamePlugin;

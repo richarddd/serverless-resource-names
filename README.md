@@ -127,7 +127,7 @@ The plugin will also inject topic ARN as an environment variable using the same 
 
 ## Commands
 
-Run `serverless env` to print all environment variables
+Run `serverless env` to print all environment variables (generated and custom)
 
 Note: all [Intristic Functions](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference.html) are printed as escaped json
 
