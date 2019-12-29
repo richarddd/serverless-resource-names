@@ -143,8 +143,16 @@ class ResourceNamePlugin {
       }
       resource.Properties[nameConverter] = resoureceName;
     }
-    if (type === "AWS::SNS::Topic") {
-      const arnEnvName = `${envName}_ARN`;
+
+    const addArn = value => {
+      acc[`${envName}_ARN`] = value;
+    };
+
+    if (type === "AWS::SQS::Queue") {
+      addArn({
+        "Fn::GetAtt": [name, "Arn"]
+      });
+    } else if (type === "AWS::SNS::Topic") {
       const arnValue = {
         "Fn::Join": [
           ":",
@@ -158,7 +166,7 @@ class ResourceNamePlugin {
           ]
         ]
       };
-      acc[arnEnvName] = arnValue;
+      addArn(arnValue);
       this.topics[name] = {
         topicName: resoureceName,
         arn: arnValue
