@@ -133,7 +133,7 @@ class ResourceNamePlugin {
 
     const nameConverter = TYPE_TO_PROPERTY_NAME[type];
     if (!nameConverter) {
-      throw Error(`Missing nameconverter for ${type}`);
+      return;
     }
     if (nameConverter instanceof Function) {
       nameConverter(resoureceName, resource.Properties || {});
