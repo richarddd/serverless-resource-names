@@ -14,10 +14,11 @@ const TYPE_TO_PROPERTY_NAME = {
     const existingTags = properties.Tags || [];
     for (const tag of existingTags) {
       if (tag.Key === "Name") {
-        return;
+        return tag.value;
       }
     }
     properties.Tags = [{ Key: "Name", Value: name }, ...existingTags];
+    return name;
   }
 };
 
@@ -126,7 +127,7 @@ class ResourceNamePlugin {
 
     const envName = convertCase(name).toUpperCase();
 
-    const resoureceName = `${prefix}-${envName.replace(
+    let resoureceName = `${prefix}-${envName.replace(
       /_/g,
       "-"
     )}-${stage}`.toLowerCase();
@@ -136,12 +137,16 @@ class ResourceNamePlugin {
       return;
     }
     if (nameConverter instanceof Function) {
-      nameConverter(resoureceName, resource.Properties || {});
+      resoureceName = nameConverter(resoureceName, resource.Properties || {});
     } else {
       if (!resource.Properties) {
         resource.Properties = {};
       }
-      resource.Properties[nameConverter] = resoureceName;
+      if (resource.Properties[nameConverter]) {
+        resoureceName = resource.Properties[nameConverter];
+      } else {
+        resource.Properties[nameConverter] = resoureceName;
+      }
     }
 
     const addArn = value => {

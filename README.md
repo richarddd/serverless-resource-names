@@ -1,6 +1,6 @@
 # Serverless Resource Names Plugin
 
-This plugin generate resources names from your resource references in `Resources:`
+This plugin generate resources names from your resource's [Logical ID](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/resources-section-structure.html) in `Resources:`
 
 ## Setup
 
@@ -64,7 +64,7 @@ This becomes very troublesome to manage when your resources grow and you'll cons
 
 ## What does it do?
 
-To solve this problem this plugin generates the eqvivalent resources names by looking at the reference names in you're `serverless.yml`
+To solve this problem this plugin generates the eqvivalent resources names by looking at the reference's [Logical ID](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/resources-section-structure.html) in your `serverless.yml`
 
 So now you can omit the `BucketName` (or other name properties for other resources)
 
@@ -76,7 +76,7 @@ UploadBucket:
   Properties: ...
 ```
 
-...will generate the following based on the reference `UploadBucket`:
+...will generate the following based on the reference Logical ID: `UploadBucket`:
 
 ```yml
 UploadBucket:
@@ -93,6 +93,8 @@ functions:
       ...
     ...
 ```
+
+_NOTE: Resources with already existing name properties will not be modifiede but will be injected as environment variables with same naming convetions based of the resources Logical ID_
 
 ## Settings
 
