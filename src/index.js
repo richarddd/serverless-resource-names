@@ -97,7 +97,6 @@ class ResourceNamePlugin {
 
     Object.entries(this.service.provider.environment).forEach(
       ([key, value]) => {
-        //let sourceValue = this.variables.getValueFromSource(value)
         let printValue = `"${value}"`;
         if (typeof value === "number" || typeof value === "boolean") {
           printValue = value;
@@ -112,6 +111,7 @@ class ResourceNamePlugin {
   async injectVariables() {
     await this.writeNames();
     if (!this.injected) {
+      this.injected = true;
       this.serverless.cli.log(`Applying resource names...`);
       Object.entries(this.environmentVariables).forEach(([key]) => {
         this.serverless.cli.log(`    ✔ Exposing env ${key}`);
@@ -182,7 +182,6 @@ class ResourceNamePlugin {
 
   async writeNames() {
     if (!this.injected && this.resources) {
-      this.injected = true;
       const resources = await this.serverless.variables.populateValue(
         this.resources,
         true
