@@ -182,8 +182,21 @@ class ResourceNamePlugin {
 
   async writeNames() {
     if (!this.injected && this.resources) {
+      const mergedResources =
+        (Array.isArray(this.resources) &&
+          this.resources.reduce(
+            (acc, resources) => {
+              acc.Resources = {
+                ...acc.Resources,
+                ...resources.Resources
+              };
+              return acc;
+            },
+            { Resources: {} }
+          )) ||
+        this.resources;
       const resources = await this.serverless.variables.populateValue(
-        this.resources,
+        mergedResources,
         true
       );
       this.environmentVariables = Object.entries(resources.Resources).reduce(
