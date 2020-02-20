@@ -39,12 +39,12 @@ class ResourceNamePlugin {
     this.serverless = serverless;
     this.variables = serverless.variables;
     this.service = serverless.service;
-    this.resources = this.service.resources;
     this.options = options;
     this.provider = serverless.getProvider("aws");
     this.topics = {};
     this.environmentVariables = {};
     this.injected = false;
+    this.injectedResources = {};
 
     this.variableResolvers = {
       topic: {
@@ -93,7 +93,7 @@ class ResourceNamePlugin {
   }
 
   async printEnvironment() {
-    await this.writeNames();
+    await this.writeResourceNames();
 
     Object.entries(this.service.provider.environment).forEach(
       ([key, value]) => {
@@ -109,7 +109,7 @@ class ResourceNamePlugin {
   }
 
   async injectVariables() {
-    await this.writeNames();
+    await this.writeResourceNames();
     if (!this.injected) {
       this.injected = true;
       this.serverless.cli.log(`Applying resource names...`);
@@ -119,13 +119,13 @@ class ResourceNamePlugin {
     }
   }
 
-  setResourceName(acc, name, type, resource, stage) {
+  setResourceName(acc, logicalId, type, resource, stage) {
     const { prefix } = (this.service.custom &&
       this.service.custom.resourceNames) || {
       prefix: this.service.service
     };
 
-    const envName = convertCase(name).toUpperCase();
+    const envName = convertCase(logicalId).toUpperCase();
 
     let resoureceName = `${prefix}-${envName.replace(
       /_/g,
@@ -155,7 +155,7 @@ class ResourceNamePlugin {
 
     if (type === "AWS::SQS::Queue") {
       addArn({
-        "Fn::GetAtt": [name, "Arn"]
+        "Fn::GetAtt": [logicalId, "Arn"]
       });
     } else if (type === "AWS::SNS::Topic") {
       const arnValue = {
@@ -172,7 +172,7 @@ class ResourceNamePlugin {
         ]
       };
       addArn(arnValue);
-      this.topics[name] = {
+      this.topics[logicalId] = {
         topicName: resoureceName,
         arn: arnValue
       };
@@ -180,38 +180,40 @@ class ResourceNamePlugin {
     acc[envName] = resoureceName;
   }
 
-  async writeNames() {
-    if (!this.injected && this.resources) {
-      const mergedResources =
-        (Array.isArray(this.resources) &&
-          this.resources.reduce(
-            (acc, resources) => {
-              acc.Resources = {
-                ...acc.Resources,
-                ...resources.Resources
-              };
-              return acc;
-            },
-            { Resources: {} }
-          )) ||
-        this.resources;
-      const resources = await this.serverless.variables.populateValue(
-        mergedResources,
-        true
-      );
-      this.environmentVariables = Object.entries(resources.Resources).reduce(
-        (acc, [key, resource]) => {
-          this.setResourceName(
-            acc,
-            key,
-            resource.Type,
-            resource,
-            this.service.provider.stage
-          );
-          return acc;
-        },
-        {}
-      );
+  async writeName(originalResources) {
+    const resources = await this.serverless.variables.populateValue(
+      originalResources,
+      true
+    );
+    return Object.entries(resources.Resources).reduce(
+      (acc, [logicalId, resource]) => {
+        this.setResourceName(
+          acc,
+          logicalId,
+          resource.Type,
+          resource,
+          this.service.provider.stage
+        );
+        return acc;
+      },
+      {}
+    );
+  }
+
+  async writeResourceNames() {
+    if (!this.injected && this.serverless.service.resources) {
+      if (Array.isArray(this.serverless.service.resources)) {
+        for (const resource of this.serverless.service.resources) {
+          this.environmentVariables = {
+            ...this.environmentVariables,
+            ...(await this.writeName(resource))
+          };
+        }
+      } else {
+        this.environmentVariables = await this.writeName(
+          this.serverless.service.resources
+        );
+      }
 
       this.service.provider.environment = {
         ...this.service.provider.environment,
