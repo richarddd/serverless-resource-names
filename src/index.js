@@ -2,6 +2,17 @@
 
 const TOPIC_PREFIX = "topic";
 
+const nameTag = (name, properties) => {
+  const existingTags = properties.Tags || [];
+  for (const tag of existingTags) {
+    if (tag.Key === "Name") {
+      return tag.value;
+    }
+  }
+  properties.Tags = [{ Key: "Name", Value: name }, ...existingTags];
+  return name;
+};
+
 const TYPE_TO_PROPERTY_NAME = {
   "AWS::SQS::Queue": "QueueName",
   "AWS::S3::Bucket": "BucketName",
@@ -10,22 +21,19 @@ const TYPE_TO_PROPERTY_NAME = {
   "AWS::DocDB::DBCluster": "DBClusterIdentifier",
   "AWS::DynamoDB::Table": "TableName",
   "AWS::DocDB::DBInstance": "DBInstanceIdentifier",
-  "AWS::EC2::Instance": (name, properties) => {
-    const existingTags = properties.Tags || [];
-    for (const tag of existingTags) {
-      if (tag.Key === "Name") {
-        return tag.value;
-      }
-    }
-    properties.Tags = [{ Key: "Name", Value: name }, ...existingTags];
-    return name;
-  }
+  "AWS::EC2::Instance": nameTag,
+  "AWS::EC2::VPC": nameTag,
+  "AWS::EC2::Subnet": nameTag,
+  "AWS::EC2::EIP": nameTag,
+  "AWS::EC2::NatGateway": nameTag,
+  "AWS::EC2::RouteTable": nameTag,
 };
 
 const convertCase = (text, separator = "_") => {
-  const isCapital = char => char.charCodeAt() >= 65 && char.charCodeAt() <= 90;
+  const isCapital = (char) =>
+    char.charCodeAt() >= 65 && char.charCodeAt() <= 90;
   return text
-    .replace(/[\w]([A-Z])/g, m => {
+    .replace(/[\w]([A-Z])/g, (m) => {
       if (isCapital(m[0]) && isCapital(m[1])) {
         return `${m[0]}${m[1]}${separator}`;
       }
@@ -50,21 +58,21 @@ class ResourceNamePlugin {
       topic: {
         resolver: this.getTopicValue.bind(this),
         serviceName: "Serverless resource names",
-        isDisabledAtPrepopulation: true
-      }
+        isDisabledAtPrepopulation: true,
+      },
     };
 
     this.commands = {
       env: {
         usage: "Prints all environment variables",
-        lifecycleEvents: ["environment"]
-      }
+        lifecycleEvents: ["environment"],
+      },
     };
 
     this.hooks = {
       "env:environment": this.printEnvironment.bind(this),
       "before:offline:start:init": this.injectVariables.bind(this),
-      "before:aws:common:validate:validate": this.injectVariables.bind(this)
+      "before:aws:common:validate:validate": this.injectVariables.bind(this),
     };
   }
 
@@ -122,7 +130,7 @@ class ResourceNamePlugin {
   setResourceName(acc, logicalId, type, resource, stage) {
     const { prefix } = (this.service.custom &&
       this.service.custom.resourceNames) || {
-      prefix: this.service.service
+      prefix: this.service.service,
     };
 
     const envName = convertCase(logicalId).toUpperCase();
@@ -149,13 +157,14 @@ class ResourceNamePlugin {
       }
     }
 
-    const addArn = value => {
-      acc[`${envName}_ARN`] = value;
+    const addArn = (value) => {
+      acc[`${envName}_ARN`] =
+        (!process.env.IS_OFFLINE && value) || JSON.stringify(value);
     };
 
     if (type === "AWS::SQS::Queue") {
       addArn({
-        "Fn::GetAtt": [logicalId, "Arn"]
+        "Fn::GetAtt": [logicalId, "Arn"],
       });
     } else if (type === "AWS::SNS::Topic") {
       const arnValue = {
@@ -167,14 +176,14 @@ class ResourceNamePlugin {
             "sns",
             { Ref: "AWS::Region" },
             { Ref: "AWS::AccountId" },
-            resoureceName
-          ]
-        ]
+            resoureceName,
+          ],
+        ],
       };
       addArn(arnValue);
       this.topics[logicalId] = {
         topicName: resoureceName,
-        arn: arnValue
+        arn: arnValue,
       };
     }
     acc[envName] = resoureceName;
@@ -206,7 +215,7 @@ class ResourceNamePlugin {
         for (const resource of this.serverless.service.resources) {
           this.environmentVariables = {
             ...this.environmentVariables,
-            ...(await this.writeName(resource))
+            ...(await this.writeName(resource)),
           };
         }
       } else {
@@ -217,7 +226,7 @@ class ResourceNamePlugin {
 
       this.service.provider.environment = {
         ...this.service.provider.environment,
-        ...this.environmentVariables
+        ...this.environmentVariables,
       };
     }
   }
