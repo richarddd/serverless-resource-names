@@ -103,7 +103,7 @@ class ResourceNamePlugin {
     const variable = src.split(`${TOPIC_PREFIX}:`)[1];
     const [topic, property] = variable.split(".");
 
-    await this.injectVariables();
+    await this.writeResourceNames();
 
     const value =
       (!property && this.topics[topic]) ||
