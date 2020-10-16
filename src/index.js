@@ -247,8 +247,10 @@ class ResourceNamePlugin {
         );
       }
 
+      const populatedEnvironment = await this.serverless.variables.populateValue(this.service.provider.environment, true)
+
       this.service.provider.environment = {
-        ...this.service.provider.environment,
+        ...populatedEnvironment,
         ...this.environmentVariables,
       };
     }
