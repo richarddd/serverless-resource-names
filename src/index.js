@@ -2,6 +2,19 @@
 
 const TOPIC_PREFIX = "topic";
 
+const setPath = (object, path, value) => {
+    const parts = path.split('.')
+    while (parts.length > 1 && object.hasOwnProperty(parts[0])) {
+      object = object[parts.shift()]
+    }
+    object[parts[0]] = value
+}
+
+const getPath = (object, path, defaultValue) => path
+   .split(/[\.\[\]\'\"]/)
+   .filter(p => p)
+   .reduce((o, p) => o ? o[p] : defaultValue, object)
+
 const nameTag = (name, properties) => {
   const existingTags = properties.Tags || [];
   for (const tag of existingTags) {
@@ -13,6 +26,15 @@ const nameTag = (name, properties) => {
   return name;
 };
 
+const nestedName = (path) =>  (name, properties) => {
+  const existingName = getPath(properties,path)
+  if(existingName){
+    return existingName
+  }
+  setPath(properties,path,name)
+  return name
+}
+
 const TYPE_TO_PROPERTY_NAME = {
   "AWS::SQS::Queue": "QueueName",
   "AWS::S3::Bucket": "BucketName",
@@ -21,6 +43,7 @@ const TYPE_TO_PROPERTY_NAME = {
   "AWS::DocDB::DBCluster": "DBClusterIdentifier",
   "AWS::DynamoDB::Table": "TableName",
   "AWS::DocDB::DBInstance": "DBInstanceIdentifier",
+  "AWS::CloudFront::CachePolicy": nestedName("CachePolicyConfig.Name"),
   "AWS::EC2::Instance": nameTag,
   "AWS::EC2::VPC": nameTag,
   "AWS::EC2::Subnet": nameTag,
