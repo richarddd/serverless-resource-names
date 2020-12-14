@@ -1,19 +1,21 @@
 "use strict";
 
 const TOPIC_PREFIX = "topic";
+const NAME_PREFIX = "name";
 
 const setPath = (object, path, value) => {
-    const parts = path.split('.')
-    while (parts.length > 1 && object.hasOwnProperty(parts[0])) {
-      object = object[parts.shift()]
-    }
-    object[parts[0]] = value
-}
+  const parts = path.split(".");
+  while (parts.length > 1 && object.hasOwnProperty(parts[0])) {
+    object = object[parts.shift()];
+  }
+  object[parts[0]] = value;
+};
 
-const getPath = (object, path, defaultValue) => path
-   .split(/[\.\[\]\'\"]/)
-   .filter(p => p)
-   .reduce((o, p) => o ? o[p] : defaultValue, object)
+const getPath = (object, path, defaultValue) =>
+  path
+    .split(/[\.\[\]\'\"]/)
+    .filter((p) => p)
+    .reduce((o, p) => (o ? o[p] : defaultValue), object);
 
 const nameTag = (name, properties) => {
   const existingTags = properties.Tags || [];
@@ -26,14 +28,14 @@ const nameTag = (name, properties) => {
   return name;
 };
 
-const nestedName = (path) =>  (name, properties) => {
-  const existingName = getPath(properties,path)
-  if(existingName){
-    return existingName
+const nestedName = (path) => (name, properties) => {
+  const existingName = getPath(properties, path);
+  if (existingName) {
+    return existingName;
   }
-  setPath(properties,path,name)
-  return name
-}
+  setPath(properties, path, name);
+  return name;
+};
 
 const TYPE_TO_PROPERTY_NAME = {
   "AWS::SQS::Queue": "QueueName",
@@ -73,13 +75,19 @@ class ResourceNamePlugin {
     this.options = options;
     this.provider = serverless.getProvider("aws");
     this.topics = {};
+    this.names = {};
     this.environmentVariables = {};
     this.injected = false;
     this.injectedResources = {};
 
     this.variableResolvers = {
-      topic: {
+      [TOPIC_PREFIX]: {
         resolver: this.getTopicValue.bind(this),
+        serviceName: "Serverless resource names",
+        isDisabledAtPrepopulation: true,
+      },
+      [NAME_PREFIX]: {
+        resolver: this.getNameValue.bind(this),
         serviceName: "Serverless resource names",
         isDisabledAtPrepopulation: true,
       },
@@ -99,6 +107,18 @@ class ResourceNamePlugin {
     };
   }
 
+  async getNameValue(src) {
+    const variable = src.split(`${NAME_PREFIX}:`)[1];
+    await this.writeResourceNames();
+    const value = this.names[variable];
+    if (!value) {
+      throw new this.serverless.classes.Error(
+        `Can not find injected resource with logical id: ${variable}`
+      );
+    }
+    return value;
+  }
+
   async getTopicValue(src) {
     const variable = src.split(`${TOPIC_PREFIX}:`)[1];
     const [topic, property] = variable.split(".");
@@ -110,7 +130,7 @@ class ResourceNamePlugin {
       (this.topics[topic] && this.topics[topic][property]);
     if (!this.topics[topic]) {
       throw new this.serverless.classes.Error(
-        `Can not find topic with resouce name: ${topic}`
+        `Can not find topic with resource name: ${topic}`
       );
     }
 
@@ -158,7 +178,7 @@ class ResourceNamePlugin {
 
     const envName = convertCase(logicalId).toUpperCase();
 
-    let resoureceName = `${prefix}-${envName.replace(
+    let resourceName = `${prefix}-${envName.replace(
       /_/g,
       "-"
     )}-${stage}`.toLowerCase();
@@ -168,15 +188,15 @@ class ResourceNamePlugin {
       return;
     }
     if (nameConverter instanceof Function) {
-      resoureceName = nameConverter(resoureceName, resource.Properties || {});
+      resourceName = nameConverter(resourceName, resource.Properties || {});
     } else {
       if (!resource.Properties) {
         resource.Properties = {};
       }
       if (resource.Properties[nameConverter]) {
-        resoureceName = resource.Properties[nameConverter];
+        resourceName = resource.Properties[nameConverter];
       } else {
-        resource.Properties[nameConverter] = resoureceName;
+        resource.Properties[nameConverter] = resourceName;
       }
     }
 
@@ -199,17 +219,18 @@ class ResourceNamePlugin {
             "sns",
             { Ref: "AWS::Region" },
             { Ref: "AWS::AccountId" },
-            resoureceName,
+            resourceName,
           ],
         ],
       };
       addArn(arnValue);
       this.topics[logicalId] = {
-        topicName: resoureceName,
+        topicName: resourceName,
         arn: arnValue,
       };
     }
-    acc[envName] = resoureceName;
+    this.names[logicalId] = resourceName;
+    acc[envName] = resourceName;
   }
 
   async writeName(originalResources) {
@@ -247,7 +268,10 @@ class ResourceNamePlugin {
         );
       }
 
-      const populatedEnvironment = await this.serverless.variables.populateValue(this.service.provider.environment, true)
+      const populatedEnvironment = await this.serverless.variables.populateValue(
+        this.service.provider.environment,
+        true
+      );
 
       this.service.provider.environment = {
         ...populatedEnvironment,

@@ -108,6 +108,25 @@ custom:
 
 Default will prefix using your service name in `serverless.yml`
 
+## Referencing generated names
+
+You can also reference the generated in other resources using the `${name:LogicalId}` variable as follows:
+
+```yml
+functions:
+  hello:
+    handler: handler.hello
+    events:
+      - s3:
+          bucket: ${name:MyBucket}
+          existing: true
+
+resources:
+  Resources:
+    MyBucket:
+      Type: AWS::S3::Bucket
+```
+
 ## SNS Topics
 
 This plugin will simplify referencing SNS topics. To reference a topic trigger for your lambda simply use: `${topic:TopicResourceName}` i.e:
