@@ -209,6 +209,9 @@ class ResourceNamePlugin {
       addArn({
         "Fn::GetAtt": [logicalId, "Arn"],
       });
+      if (resource.Properties && resource.Properties.FifoQueue) {
+        resourceName += ".fifo";
+      }
     } else if (type === "AWS::SNS::Topic") {
       const arnValue = {
         "Fn::Join": [
@@ -268,10 +271,11 @@ class ResourceNamePlugin {
         );
       }
 
-      const populatedEnvironment = await this.serverless.variables.populateValue(
-        this.service.provider.environment,
-        true
-      );
+      const populatedEnvironment =
+        await this.serverless.variables.populateValue(
+          this.service.provider.environment,
+          true
+        );
 
       this.service.provider.environment = {
         ...populatedEnvironment,
