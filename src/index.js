@@ -212,8 +212,13 @@ class ResourceNamePlugin {
       const ref = { Ref: logicalId };
       acc[`${envName}_URL`] =
         (!process.env.IS_OFFLINE && ref) || JSON.stringify(ref);
-      if (resource.Properties && resource.Properties.FifoQueue) {
+      if (
+        resource.Properties &&
+        resource.Properties.FifoQueue &&
+        !resourceName.endsWith(".fifo")
+      ) {
         resourceName += ".fifo";
+        resource.Properties[nameConverter] = resourceName;
       }
     } else if (type === "AWS::SNS::Topic") {
       const arnValue = {
