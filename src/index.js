@@ -209,6 +209,9 @@ class ResourceNamePlugin {
       addArn({
         "Fn::GetAtt": [logicalId, "Arn"],
       });
+      const ref = { Ref: logicalId };
+      acc[`${envName}_URL`] =
+        (!process.env.IS_OFFLINE && ref) || JSON.stringify(ref);
       if (resource.Properties && resource.Properties.FifoQueue) {
         resourceName += ".fifo";
       }
