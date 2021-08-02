@@ -38,6 +38,8 @@ const nestedName = (path) => (name, properties) => {
 };
 
 const TYPE_TO_PROPERTY_NAME = {
+  "AWS::IAM::Policy": "PolicyName",
+  "AWS::IAM::Role": "RoleName",
   "AWS::SQS::Queue": "QueueName",
   "AWS::S3::Bucket": "BucketName",
   "AWS::SNS::Topic": "TopicName",
