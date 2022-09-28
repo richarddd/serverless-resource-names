@@ -72,7 +72,6 @@ const convertCase = (text, separator = "_") => {
 class ResourceNamePlugin {
   constructor(serverless, options) {
     this.serverless = serverless;
-    this.variables = serverless.variables;
     this.service = serverless.service;
     this.options = options;
     this.provider = serverless.getProvider("aws");
@@ -82,16 +81,24 @@ class ResourceNamePlugin {
     this.injected = false;
     this.injectedResources = {};
 
-    this.variableResolvers = {
+    const that = this;
+
+    this.configurationVariablesSources = {
       [TOPIC_PREFIX]: {
-        resolver: this.getTopicValue.bind(this),
-        serviceName: "Serverless resource names",
-        isDisabledAtPrepopulation: true,
+        async resolve({ address }) {
+          const value = await that.getTopicValue(address);
+          return {
+            value,
+          };
+        },
       },
       [NAME_PREFIX]: {
-        resolver: this.getNameValue.bind(this),
-        serviceName: "Serverless resource names",
-        isDisabledAtPrepopulation: true,
+        async resolve({ address }) {
+          const value = await that.getNameValue(address);
+          return {
+            value,
+          };
+        },
       },
     };
 
@@ -109,8 +116,7 @@ class ResourceNamePlugin {
     };
   }
 
-  async getNameValue(src) {
-    const variable = src.split(`${NAME_PREFIX}:`)[1];
+  async getNameValue(variable) {
     await this.writeResourceNames();
     const value = this.names[variable];
     if (!value) {
@@ -121,11 +127,16 @@ class ResourceNamePlugin {
     return value;
   }
 
-  async getTopicValue(src) {
-    const variable = src.split(`${TOPIC_PREFIX}:`)[1];
+  async getTopicValue(variable) {
     const [topic, property] = variable.split(".");
 
     await this.writeResourceNames();
+
+    if (!this.topics[topic]) {
+      throw new this.serverless.classes.Error(
+        `Can not find topic with resource name: ${topic}`
+      );
+    }
 
     const value =
       (!property && this.topics[topic]) ||
@@ -133,12 +144,6 @@ class ResourceNamePlugin {
     if (!this.topics[topic]) {
       throw new this.serverless.classes.Error(
         `Can not find topic with resource name: ${topic}`
-      );
-    }
-
-    if (!value) {
-      throw new this.serverless.classes.Error(
-        `Can not find property "${property}" in topic: ${topic}`
       );
     }
 
@@ -246,11 +251,7 @@ class ResourceNamePlugin {
     acc[envName] = resourceName;
   }
 
-  async writeName(originalResources) {
-    const resources = await this.serverless.variables.populateValue(
-      originalResources,
-      true
-    );
+  async writeName(resources) {
     return Object.entries(resources.Resources).reduce(
       (acc, [logicalId, resource]) => {
         this.setResourceName(
@@ -281,14 +282,8 @@ class ResourceNamePlugin {
         );
       }
 
-      const populatedEnvironment =
-        await this.serverless.variables.populateValue(
-          this.service.provider.environment,
-          true
-        );
-
       this.service.provider.environment = {
-        ...populatedEnvironment,
+        ...this.service.provider.environment,
         ...this.environmentVariables,
       };
     }
