@@ -50,7 +50,7 @@ Resources:
 
 **Notice how you have to constantly specify names for these services?**
 
-Futhermore you're likley to use them in your enviroment variables as well
+Futhermore you're likely to use them in your environment variables as well
 
 ```yml
 provider:
@@ -64,7 +64,7 @@ This becomes very troublesome to manage when your resources grow and you'll cons
 
 ## What does it do?
 
-To solve this problem this plugin generates the eqvivalent resources names by looking at the reference's [Logical ID](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/resources-section-structure.html) in your `serverless.yml`
+To solve this problem this plugin generates the equivalent resources names by looking at the reference's [Logical ID](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/resources-section-structure.html) in your `serverless.yml`
 
 So now you can omit the `BucketName` (or other name properties for other resources)
 
