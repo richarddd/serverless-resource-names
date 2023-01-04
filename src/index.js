@@ -207,18 +207,14 @@ class ResourceNamePlugin {
       }
     }
 
-    const addArn = (value) => {
-      acc[`${envName}_ARN`] =
+    const addStringified = (value, suffix = "ARN") => {
+      acc[`${envName}_${suffix}`] =
         (!process.env.IS_OFFLINE && value) || JSON.stringify(value);
     };
 
     if (type === "AWS::SQS::Queue") {
-      addArn({
-        "Fn::GetAtt": [logicalId, "Arn"],
-      });
       const ref = { Ref: logicalId };
-      acc[`${envName}_URL`] =
-        (!process.env.IS_OFFLINE && ref) || JSON.stringify(ref);
+      addStringified(ref, "URL");
       if (
         resource.Properties &&
         resource.Properties.FifoQueue &&
@@ -229,26 +225,17 @@ class ResourceNamePlugin {
       }
     } else if (type === "AWS::SNS::Topic") {
       const arnValue = {
-        "Fn::Join": [
-          ":",
-          [
-            "arn",
-            "aws",
-            "sns",
-            { Ref: "AWS::Region" },
-            { Ref: "AWS::AccountId" },
-            resourceName,
-          ],
-        ],
+        Ref: resourceName,
       };
-      addArn(arnValue);
+      addStringified(arnValue);
       this.topics[logicalId] = {
         topicName: resourceName,
         arn: arnValue,
       };
+    } else {
+      acc[envName] = resourceName;
     }
     this.names[logicalId] = resourceName;
-    acc[envName] = resourceName;
   }
 
   async writeName(resources) {

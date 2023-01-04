@@ -144,7 +144,9 @@ resources:
       Type: AWS::SNS::Topic
 ```
 
-The plugin will also inject SNS Topic- & SQS Queue ARNs as an environment variables using the same naming convetions suffixed by `_ARN`. For the example above that would be: `MY_TOPIC_ARN`
+The plugin will also inject SNS Topic- & SQS Queue ARNs as an environment variables using the same naming conventions suffixed by `_ARN` or `_URL`. For the example above that would be: `MY_TOPIC_ARN`.
+
+For SQS queues the plugin will suffix and return the queue url value rather than the queue name.
 
 ## Commands
 
@@ -160,5 +162,3 @@ ENVIRONMENT_VALUE_2=2
 SOME_TOPIC_ARN="{\"Fn::Join\":[\":\",[\"arn\",\"aws\",\"sns\",{\"Ref\":\"AWS::Region\"},{\"Ref\":\"AWS::AccountId\"},\"my-prefix-some-topic-dev\"]]}"
 SOME_TOPIC="my-prefix-some-topic-dev"
 ```
-
-
